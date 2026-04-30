@@ -1,10 +1,80 @@
-import React from "react";
-// Capture PWA install prompt globally so any component can trigger it
+import React, { useState, useEffect } from "react";
+
+// ── PWA install prompt ───────────────────────────────────────────────────────
 window.__pwaInstallPrompt = null;
 window.addEventListener("beforeinstallprompt", (e) => {
   e.preventDefault();
   window.__pwaInstallPrompt = e;
 });
+
+// ── Backend wake-up utility ──────────────────────────────────────────────────
+const BACKEND = "https://awaaz-backend-5.onrender.com";
+
+async function pingBackend(retries = 8, delayMs = 5000) {
+  for (let i = 0; i < retries; i++) {
+    try {
+      const res = await fetch(`${BACKEND}/`, { method: "HEAD", signal: AbortSignal.timeout(8000) });
+      if (res.ok || res.status === 405) return true; // 405 = HEAD not allowed but server is up
+    } catch {
+      // server still sleeping
+    }
+    if (i < retries - 1) await new Promise(r => setTimeout(r, delayMs));
+  }
+  return false; // gave up, let app load anyway
+}
+
+function BackendWakeUp({ children }) {
+  const [ready, setReady] = useState(false);
+  const [status, setStatus] = useState("Warming up server…");
+
+  useEffect(() => {
+    let dots = 0;
+    const interval = setInterval(() => {
+      dots = (dots + 1) % 4;
+      setStatus("Warming up server" + ".".repeat(dots));
+    }, 600);
+
+    pingBackend().then((ok) => {
+      clearInterval(interval);
+      setStatus(ok ? "Connected!" : "Connecting in background…");
+      setTimeout(() => setReady(true), 400);
+    });
+
+    return () => clearInterval(interval);
+  }, []);
+
+  if (!ready) {
+    return (
+      <div style={{
+        minHeight: "100vh",
+        background: "linear-gradient(135deg, #1a1a2e 0%, #4C1D95 100%)",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: "24px",
+        fontFamily: "system-ui, sans-serif",
+      }}>
+        <div style={{ fontSize: "52px" }}>📡</div>
+        <div style={{
+          width: "48px", height: "48px",
+          border: "4px solid rgba(255,255,255,0.2)",
+          borderTop: "4px solid #8B5CF6",
+          borderRadius: "50%",
+          animation: "spin 1s linear infinite",
+        }} />
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+        <p style={{ color: "#fff", fontSize: "18px", fontWeight: 600, margin: 0 }}>AWAAZ</p>
+        <p style={{ color: "rgba(255,255,255,0.6)", fontSize: "14px", margin: 0 }}>{status}</p>
+        <p style={{ color: "rgba(255,255,255,0.35)", fontSize: "12px", margin: 0 }}>
+          Free tier servers sleep — this takes ~30s on first load
+        </p>
+      </div>
+    );
+  }
+
+  return children;
+}
 import ReactDOM from "react-dom/client";
 import { BrowserRouter, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 
@@ -134,8 +204,10 @@ export default function App() {
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
-    <LanguageProvider>
-      <App />
-    </LanguageProvider>
+    <BackendWakeUp>
+      <LanguageProvider>
+        <App />
+      </LanguageProvider>
+    </BackendWakeUp>
   </React.StrictMode>
 );
