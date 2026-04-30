@@ -1,4 +1,4 @@
-export const API_BASE = "https://awaaz-backend-5.onrender.com";
+export const API_BASE = "https://awaaz-backend-6.onrender.com";
 
 const DEVICE_ID_KEY = "awaaz_device_id";
 const ANON_ID_KEY = "anon_id";
