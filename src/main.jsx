@@ -8,7 +8,7 @@ window.addEventListener("beforeinstallprompt", (e) => {
 });
 
 // ── Backend wake-up utility ──────────────────────────────────────────────────
-const BACKEND = "https://awaaz-backend-5.onrender.com";
+const BACKEND = "https://awaaz-backend-6.onrender.com";
 
 async function pingBackend(retries = 8, delayMs = 5000) {
   for (let i = 0; i < retries; i++) {
